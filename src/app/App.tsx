@@ -257,112 +257,109 @@ export default function App() {
         <div className="max-w-lg mx-auto px-5 pb-[env(safe-area-inset-bottom,16px)]">
           <AnimatePresence mode="wait">
             {viewMode === 'list' ? (
-              <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <motion.div
+                key={`list-${activeFilter}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
                 <div className="space-y-2">
                   {/* Main tasks (with due dates) */}
-                  <AnimatePresence mode="popLayout">
-                    {datedTasks.map((task, index) => (
-                      <motion.div
-                        key={task.id}
-                        layout
-                        initial={{ opacity: 0, y: 16 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.35, delay: index * 0.04 }}
-                      >
-                        <TaskCard task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} onUpdateDueDate={handleUpdateDueDate} />
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
+                  {datedTasks.map((task) => (
+                    <motion.div
+                      key={task.id}
+                      layout
+                      transition={{ duration: 0.25 }}
+                    >
+                      <TaskCard task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} onUpdateDueDate={handleUpdateDueDate} />
+                    </motion.div>
+                  ))}
 
                   {filteredTasks.length === 0 && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-24 text-center">
+                    <div className="flex flex-col items-center justify-center py-24 text-center">
                       <div className="text-[40px] mb-3">✨</div>
                       <p className="text-[14px] text-gray-300">אין משימות</p>
-                    </motion.div>
+                    </div>
                   )}
 
                   {/* Someday section (no due date) */}
-                  <AnimatePresence>
-                    {undatedTasks.length > 0 && (
-                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pt-6">
-                        <button
-                          onClick={() => setIsSomedayOpen(!isSomedayOpen)}
-                          className="flex items-center gap-3 mb-3 px-1 w-full group"
-                        >
-                          <div className="h-px bg-gray-200/60 flex-1" />
-                          <div className="flex items-center gap-1">
-                            <span className="text-[11px] text-gray-300 tracking-wide">ביום מן הימים · {undatedTasks.length}</span>
-                            <motion.div
-                              animate={{ rotate: isSomedayOpen ? 0 : -90 }}
-                              transition={{ duration: 0.2 }}
-                            >
-                              <ChevronDown className="w-3 h-3 text-gray-300" />
-                            </motion.div>
-                          </div>
-                          <div className="h-px bg-gray-200/60 flex-1" />
-                        </button>
-                        <AnimatePresence>
-                          {isSomedayOpen && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: 'auto', opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-                              className="overflow-hidden"
-                            >
-                              <div className="space-y-2">
-                                {undatedTasks.map((task) => (
-                                  <TaskCard key={task.id} task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} onUpdateDueDate={handleUpdateDueDate} />
-                                ))}
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  {undatedTasks.length > 0 && (
+                    <div className="pt-6">
+                      <button
+                        onClick={() => setIsSomedayOpen(!isSomedayOpen)}
+                        className="flex items-center gap-3 mb-3 px-1 w-full group"
+                      >
+                        <div className="h-px bg-gray-200/60 flex-1" />
+                        <div className="flex items-center gap-1">
+                          <span className="text-[11px] text-gray-300 tracking-wide">ביום מן הימים · {undatedTasks.length}</span>
+                          <motion.div
+                            animate={{ rotate: isSomedayOpen ? 0 : -90 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <ChevronDown className="w-3 h-3 text-gray-300" />
+                          </motion.div>
+                        </div>
+                        <div className="h-px bg-gray-200/60 flex-1" />
+                      </button>
+                      <AnimatePresence>
+                        {isSomedayOpen && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25, ease: 'easeInOut' }}
+                            className="overflow-hidden"
+                          >
+                            <div className="space-y-2">
+                              {undatedTasks.map((task) => (
+                                <TaskCard key={task.id} task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} onUpdateDueDate={handleUpdateDueDate} />
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
 
                   {/* Completed section (collapsible) */}
-                  <AnimatePresence>
-                    {completedTasks.length > 0 && (
-                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pt-6">
-                        <button
-                          onClick={() => setIsCompletedOpen(!isCompletedOpen)}
-                          className="flex items-center gap-3 mb-3 px-1 w-full group"
-                        >
-                          <div className="h-px bg-gray-200/60 flex-1" />
-                          <div className="flex items-center gap-1">
-                            <span className="text-[11px] text-gray-300 tracking-wide">הושלמו · {completedTasks.length}</span>
-                            <motion.div
-                              animate={{ rotate: isCompletedOpen ? 0 : -90 }}
-                              transition={{ duration: 0.2 }}
-                            >
-                              <ChevronDown className="w-3 h-3 text-gray-300" />
-                            </motion.div>
-                          </div>
-                          <div className="h-px bg-gray-200/60 flex-1" />
-                        </button>
-                        <AnimatePresence>
-                          {isCompletedOpen && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: 'auto', opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-                              className="overflow-hidden"
-                            >
-                              <div className="space-y-2">
-                                {completedTasks.map((task) => (
-                                  <TaskCard key={task.id} task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} onUpdateDueDate={handleUpdateDueDate} />
-                                ))}
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  {completedTasks.length > 0 && (
+                    <div className="pt-6">
+                      <button
+                        onClick={() => setIsCompletedOpen(!isCompletedOpen)}
+                        className="flex items-center gap-3 mb-3 px-1 w-full group"
+                      >
+                        <div className="h-px bg-gray-200/60 flex-1" />
+                        <div className="flex items-center gap-1">
+                          <span className="text-[11px] text-gray-300 tracking-wide">הושלמו · {completedTasks.length}</span>
+                          <motion.div
+                            animate={{ rotate: isCompletedOpen ? 0 : -90 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <ChevronDown className="w-3 h-3 text-gray-300" />
+                          </motion.div>
+                        </div>
+                        <div className="h-px bg-gray-200/60 flex-1" />
+                      </button>
+                      <AnimatePresence>
+                        {isCompletedOpen && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25, ease: 'easeInOut' }}
+                            className="overflow-hidden"
+                          >
+                            <div className="space-y-2">
+                              {completedTasks.map((task) => (
+                                <TaskCard key={task.id} task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} onUpdateDueDate={handleUpdateDueDate} />
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             ) : viewMode === 'weekly' ? (
