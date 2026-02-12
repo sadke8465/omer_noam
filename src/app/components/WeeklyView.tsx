@@ -138,15 +138,10 @@ export default function WeeklyView({ tasks, onToggle }: WeeklyViewProps) {
   return (
     <div className="pt-2">
       {/* Week header */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, type: 'spring', stiffness: 350, damping: 30 }}
-        className="mb-5"
-      >
+      <div className="mb-5">
         <h2 className="text-[18px] text-gray-900">השבוע שלכם</h2>
         <p className="text-[12px] text-gray-300 mt-0.5">{weekLabel}</p>
-      </motion.div>
+      </div>
 
       {/* Active days */}
       {activeDays.length === 0 && completedThisWeek.length === 0 ? (
