@@ -133,6 +133,21 @@ export default function App() {
     if (error) console.error('Error updating notes:', error);
   };
 
+  const handleUpdateDueDate = async (id: string | number, due_date: string | null) => {
+    // Optimistic
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, due_date } : t));
+
+    const { error } = await supabase
+      .from('tasks')
+      .update({ due_date })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating due date:', error);
+      fetchTasks();
+    }
+  };
+
   // --- Sorting & Filtering (Same as before) ---
   const filteredTasks = useMemo(() => {
     const filtered = tasks.filter((t) => {
@@ -250,7 +265,7 @@ export default function App() {
                         exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ duration: 0.35, delay: index * 0.04 }}
                       >
-                        <TaskCard task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} />
+                        <TaskCard task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} onUpdateDueDate={handleUpdateDueDate} />
                       </motion.div>
                     ))}
                   </AnimatePresence>
@@ -272,7 +287,7 @@ export default function App() {
                         </div>
                         <div className="space-y-2">
                           {completedTasks.map((task) => (
-                            <TaskCard key={task.id} task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} />
+                            <TaskCard key={task.id} task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} onUpdateDueDate={handleUpdateDueDate} />
                           ))}
                         </div>
                       </motion.div>
@@ -286,7 +301,7 @@ export default function App() {
               </motion.div>
             ) : (
               <motion.div key="calendar" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <CalendarView tasks={tasks} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} />
+                <CalendarView tasks={tasks} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} onUpdateDueDate={handleUpdateDueDate} />
               </motion.div>
             )}
           </AnimatePresence>

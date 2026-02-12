@@ -77,9 +77,10 @@ interface TaskCardProps {
   onToggle: (id: number) => void;
   onDelete: (id: number) => void;
   onUpdateNotes: (id: number, notes: string) => void;
+  onUpdateDueDate?: (id: number, dueDate: string | null) => void;
 }
 
-export default function TaskCard({ task, onToggle, onDelete, onUpdateNotes }: TaskCardProps) {
+export default function TaskCard({ task, onToggle, onDelete, onUpdateNotes, onUpdateDueDate }: TaskCardProps) {
   const [isPressed, setIsPressed] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -224,7 +225,7 @@ export default function TaskCard({ task, onToggle, onDelete, onUpdateNotes }: Ta
           </button>
         </div>
 
-        {/* Expandable notes area */}
+        {/* Expandable details area */}
         <AnimatePresence>
           {isExpanded && (
             <motion.div
@@ -234,7 +235,36 @@ export default function TaskCard({ task, onToggle, onDelete, onUpdateNotes }: Ta
               transition={{ type: 'spring', stiffness: 400, damping: 32 }}
               className="overflow-hidden"
             >
-              <div className="pt-3 pr-[34px]">
+              <div className="pt-3 pr-[34px] space-y-2">
+                {/* Due date picker */}
+                <div className="relative inline-flex items-center gap-1.5 h-8 rounded-xl bg-gray-50/60 px-3 transition-all hover:bg-gray-100/80">
+                  <input
+                    type="date"
+                    value={task.due_date || ''}
+                    onChange={(e) => {
+                      onUpdateDueDate?.(task.id, e.target.value || null);
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    style={{ WebkitAppearance: 'none' }}
+                  />
+                  <Calendar className="w-3.5 h-3.5 text-gray-400" strokeWidth={1.6} />
+                  <span className="text-[12px] text-gray-500">
+                    {task.due_date ? formatDate(task.due_date) : 'הוסף תאריך'}
+                  </span>
+                  {task.due_date && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onUpdateDueDate?.(task.id, null);
+                      }}
+                      className="relative z-20 text-gray-300 hover:text-gray-500 transition-colors mr-0.5"
+                    >
+                      <span className="text-[11px]">✕</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Notes */}
                 <textarea
                   ref={textareaRef}
                   value={localNotes}

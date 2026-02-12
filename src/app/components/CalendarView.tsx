@@ -15,6 +15,7 @@ interface CalendarViewProps {
   onToggle: (id: number) => void;
   onDelete: (id: number) => void;
   onUpdateNotes: (id: number, notes: string) => void;
+  onUpdateDueDate?: (id: number, dueDate: string | null) => void;
 }
 
 function toDateKey(date: Date): string {
@@ -46,7 +47,7 @@ function getCalendarDays(year: number, month: number) {
   return days;
 }
 
-export default function CalendarView({ tasks, onToggle, onDelete, onUpdateNotes }: CalendarViewProps) {
+export default function CalendarView({ tasks, onToggle, onDelete, onUpdateNotes, onUpdateDueDate }: CalendarViewProps) {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
@@ -313,6 +314,7 @@ export default function CalendarView({ tasks, onToggle, onDelete, onUpdateNotes 
                         onToggle={onToggle}
                         onDelete={onDelete}
                         onUpdateNotes={onUpdateNotes}
+                        onUpdateDueDate={onUpdateDueDate}
                       />
                     </motion.div>
                   ))}
