@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Check, Calendar, Trash2, AlignRight } from 'lucide-react';
+import { Check, Calendar, Trash2, AlignRight, ExternalLink } from 'lucide-react';
 
 export interface Task {
   id: number;
@@ -291,6 +291,38 @@ export default function TaskCard({ task, onToggle, onDelete, onUpdateNotes, onUp
                   "
                   style={{ minHeight: '36px' }}
                 />
+
+                {/* Google Calendar button — only for tasks with dates */}
+                {task.due_date && (
+                  <motion.a
+                    href={(() => {
+                      const d = task.due_date!.replace(/-/g, '');
+                      const nextDay = new Date(task.due_date!);
+                      nextDay.setDate(nextDay.getDate() + 1);
+                      const dEnd = nextDay.toISOString().slice(0, 10).replace(/-/g, '');
+                      const params = new URLSearchParams({
+                        action: 'TEMPLATE',
+                        text: task.title,
+                        dates: `${d}/${dEnd}`,
+                        ...(task.notes ? { details: task.notes } : {}),
+                      });
+                      return `https://calendar.google.com/calendar/render?${params.toString()}`;
+                    })()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    whileTap={{ scale: 0.95 }}
+                    className="
+                      inline-flex items-center gap-1.5 h-8 rounded-xl
+                      bg-gray-50/60 px-3
+                      text-[12px] text-gray-400
+                      transition-all hover:bg-gray-100/80 hover:text-gray-600
+                    "
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" strokeWidth={1.6} />
+                    <span>הוסף ליומן</span>
+                  </motion.a>
+                )}
               </div>
             </motion.div>
           )}
