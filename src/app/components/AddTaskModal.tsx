@@ -149,18 +149,7 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, defaultAssignee }
                 )}
               </AnimatePresence>
 
-              {/* Hidden native date input */}
-              <input
-                ref={dateRef}
-                type="date"
-                value={dueDate}
-                onChange={(e) => {
-                  setDueDate(e.target.value);
-                  if (e.target.value) setShowDate(true);
-                }}
-                className="absolute opacity-0 pointer-events-none w-0 h-0"
-                tabIndex={-1}
-              />
+
 
               {/* Toolbar row */}
               <div className="flex items-center justify-between mt-4 mb-1">
@@ -210,16 +199,22 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, defaultAssignee }
                   {/* Divider */}
                   <div className="w-px h-4 bg-gray-150 mx-1" />
 
-                  {/* Date button */}
-                  <motion.button
-                    type="button"
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => dateRef.current?.showPicker()}
-                    className={`
-                      h-8 rounded-full flex items-center gap-1.5 transition-all duration-200
-                      ${dueDate ? 'bg-gray-100 px-3' : 'w-8 justify-center text-gray-300 hover:text-gray-400'}
-                    `}
-                  >
+                  {/* Date button — native input overlay for iOS compatibility */}
+                  <div className={`
+                    relative h-8 rounded-full flex items-center gap-1.5 transition-all duration-200
+                    ${dueDate ? 'bg-gray-100 px-3' : 'w-8 justify-center text-gray-300 hover:text-gray-400'}
+                  `}>
+                    <input
+                      ref={dateRef}
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => {
+                        setDueDate(e.target.value);
+                        if (e.target.value) setShowDate(true);
+                      }}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      style={{ WebkitAppearance: 'none' }}
+                    />
                     <Calendar className="w-[15px] h-[15px]" strokeWidth={1.6} />
                     {dueDate && (
                       <motion.span
@@ -230,7 +225,7 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, defaultAssignee }
                         {formatHebrewDate(dueDate)}
                       </motion.span>
                     )}
-                  </motion.button>
+                  </div>
 
                   {/* Notes toggle */}
                   <motion.button

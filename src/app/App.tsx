@@ -82,7 +82,7 @@ export default function App() {
         is_complete: false // Default
       }
     ]);
-    
+
     if (error) console.error('Error adding task:', error);
   };
 
@@ -129,7 +129,7 @@ export default function App() {
       .from('tasks')
       .update({ notes })
       .eq('id', id);
-      
+
     if (error) console.error('Error updating notes:', error);
   };
 
@@ -154,7 +154,7 @@ export default function App() {
   // --- Render (Same as before) ---
   return (
     <div className="min-h-screen bg-[#F8F8FA] font-['Inter',system-ui,sans-serif]" dir="rtl">
-      <div className="max-w-lg mx-auto px-5 pb-24">
+      <div className="max-w-lg mx-auto px-5 pb-8">
         <div className="h-[env(safe-area-inset-top,12px)]" />
 
         <header className="pt-8 pb-2">
@@ -205,17 +205,28 @@ export default function App() {
               initial={{ opacity: 0, filter: 'blur(4px)' }}
               animate={{ opacity: 1, filter: 'blur(0px)' }}
               exit={{ opacity: 0, filter: 'blur(4px)' }}
-              className="flex gap-1.5 py-4 mb-2"
+              className="flex items-center justify-between py-4 mb-2"
             >
-              {filters.map((f) => (
-                <button
-                  key={f.value}
-                  onClick={() => setActiveFilter(f.value)}
-                  className={`relative px-4 py-1.5 rounded-full text-[13px] transition-all ${activeFilter === f.value ? `${filterColors[f.value]} text-white` : 'text-gray-400'}`}
-                >
-                  {f.label}
-                </button>
-              ))}
+              <div className="flex gap-1.5">
+                {filters.map((f) => (
+                  <button
+                    key={f.value}
+                    onClick={() => setActiveFilter(f.value)}
+                    className={`relative px-4 py-1.5 rounded-full text-[13px] transition-all ${activeFilter === f.value ? `${filterColors[f.value]} text-white` : 'text-gray-400'}`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              <motion.button
+                onClick={() => setIsModalOpen(true)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.9 }}
+                className="w-[30px] h-[30px] rounded-full bg-gray-900 text-white flex items-center justify-center"
+              >
+                <Plus className="w-4 h-4" strokeWidth={2} />
+              </motion.button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -276,16 +287,7 @@ export default function App() {
         </AnimatePresence>
       </div>
 
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
-        <motion.button
-          onClick={() => setIsModalOpen(true)}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.92 }}
-          className="w-14 h-14 rounded-full bg-gray-900 text-white flex items-center justify-center shadow-[0_4px_24px_rgba(0,0,0,0.15)]"
-        >
-          <Plus className="w-6 h-6" strokeWidth={1.8} />
-        </motion.button>
-      </div>
+
 
       <AddTaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onAdd={handleAdd} defaultAssignee={activeFilter} />
     </div>
