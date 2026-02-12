@@ -186,7 +186,7 @@ export default function App() {
                 transition={{ duration: 0.5 }}
                 className="text-[28px] tracking-[-0.02em] text-gray-900"
               >
-                שלנו
+                עומר ונועם 💛
               </motion.h1>
               <motion.p
                 initial={{ opacity: 0 }}
