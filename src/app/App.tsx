@@ -151,10 +151,11 @@ export default function App() {
   const activeTasks = filteredTasks.filter((t) => !t.is_complete);
   const completedTasks = filteredTasks.filter((t) => t.is_complete);
 
-  // --- Render (Same as before) ---
+  // --- Render ---
   return (
-    <div className="min-h-screen bg-[#F8F8FA] font-['Inter',system-ui,sans-serif]" dir="rtl">
-      <div className="max-w-lg mx-auto px-5 pb-8">
+    <div className="h-screen flex flex-col bg-[#F8F8FA] font-['Inter',system-ui,sans-serif] overflow-hidden" dir="rtl">
+      {/* Static header area — never scrolls */}
+      <div className="flex-shrink-0 max-w-lg w-full mx-auto px-5">
         <div className="h-[env(safe-area-inset-top,12px)]" />
 
         <header className="pt-8 pb-2">
@@ -230,64 +231,67 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        <AnimatePresence mode="wait">
-          {viewMode === 'list' ? (
-            <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <div className="space-y-2">
-                <AnimatePresence mode="popLayout">
-                  {activeTasks.map((task, index) => (
-                    <motion.div
-                      key={task.id}
-                      layout
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ duration: 0.35, delay: index * 0.04 }}
-                    >
-                      <TaskCard task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-
-                {filteredTasks.length === 0 && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-24 text-center">
-                    <div className="text-[40px] mb-3">✨</div>
-                    <p className="text-[14px] text-gray-300">אין משימות</p>
-                  </motion.div>
-                )}
-
-                <AnimatePresence>
-                  {completedTasks.length > 0 && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pt-6">
-                      <div className="flex items-center gap-3 mb-3 px-1">
-                        <div className="h-px bg-gray-200/60 flex-1" />
-                        <span className="text-[11px] text-gray-300 tracking-wide">הושלמו · {completedTasks.length}</span>
-                        <div className="h-px bg-gray-200/60 flex-1" />
-                      </div>
-                      <div className="space-y-2">
-                        {completedTasks.map((task) => (
-                          <TaskCard key={task.id} task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} />
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </motion.div>
-          ) : viewMode === 'weekly' ? (
-            <motion.div key="weekly" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <WeeklyView tasks={tasks} onToggle={handleToggle} />
-            </motion.div>
-          ) : (
-            <motion.div key="calendar" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <CalendarView tasks={tasks} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} />
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
+      {/* Scrollable content area — only this scrolls */}
+      <div className="flex-1 min-h-0 overflow-y-auto scrollable-content">
+        <div className="max-w-lg mx-auto px-5 pb-[env(safe-area-inset-bottom,16px)]">
+          <AnimatePresence mode="wait">
+            {viewMode === 'list' ? (
+              <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <div className="space-y-2">
+                  <AnimatePresence mode="popLayout">
+                    {activeTasks.map((task, index) => (
+                      <motion.div
+                        key={task.id}
+                        layout
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.35, delay: index * 0.04 }}
+                      >
+                        <TaskCard task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
 
+                  {filteredTasks.length === 0 && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-24 text-center">
+                      <div className="text-[40px] mb-3">✨</div>
+                      <p className="text-[14px] text-gray-300">אין משימות</p>
+                    </motion.div>
+                  )}
+
+                  <AnimatePresence>
+                    {completedTasks.length > 0 && (
+                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pt-6">
+                        <div className="flex items-center gap-3 mb-3 px-1">
+                          <div className="h-px bg-gray-200/60 flex-1" />
+                          <span className="text-[11px] text-gray-300 tracking-wide">הושלמו · {completedTasks.length}</span>
+                          <div className="h-px bg-gray-200/60 flex-1" />
+                        </div>
+                        <div className="space-y-2">
+                          {completedTasks.map((task) => (
+                            <TaskCard key={task.id} task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} />
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+            ) : viewMode === 'weekly' ? (
+              <motion.div key="weekly" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <WeeklyView tasks={tasks} onToggle={handleToggle} />
+              </motion.div>
+            ) : (
+              <motion.div key="calendar" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <CalendarView tasks={tasks} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
 
       <AddTaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onAdd={handleAdd} defaultAssignee={activeFilter} />
     </div>
