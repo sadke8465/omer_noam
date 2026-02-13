@@ -3,7 +3,9 @@
 @import './theme.css';
 
 /* Lock viewport — no document-level scroll ever */
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
@@ -21,4 +23,19 @@ body {
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
+  /* GPU accelerate the scroll layer */
+  will-change: scroll-position;
+  transform: translateZ(0);
+}
+
+/* Isolate task card layout — prevents sibling recalcs */
+.task-card-wrapper {
+  contain: content;
+  will-change: transform, opacity;
+}
+
+/* Smoother transforms on animated elements */
+[style*="transform"] {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }

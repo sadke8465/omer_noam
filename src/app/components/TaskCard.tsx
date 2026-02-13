@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Check, Calendar, Trash2, AlignRight, ExternalLink } from 'lucide-react';
 
@@ -80,7 +80,7 @@ interface TaskCardProps {
   onUpdateDueDate?: (id: number, dueDate: string | null) => void;
 }
 
-export default function TaskCard({ task, onToggle, onDelete, onUpdateNotes, onUpdateDueDate }: TaskCardProps) {
+function TaskCard({ task, onToggle, onDelete, onUpdateNotes, onUpdateDueDate }: TaskCardProps) {
   const [isPressed, setIsPressed] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -334,3 +334,5 @@ export default function TaskCard({ task, onToggle, onDelete, onUpdateNotes, onUp
     </motion.div>
   );
 }
+
+export default memo(TaskCard);

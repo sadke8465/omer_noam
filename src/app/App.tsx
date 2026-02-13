@@ -1,11 +1,13 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, List, CalendarDays, Rows3, ChevronDown } from 'lucide-react';
 import TaskCard, { type Task } from './components/TaskCard';
 import AddTaskModal from './components/AddTaskModal';
-import CalendarView from './components/CalendarView';
-import WeeklyView from './components/WeeklyView';
-import { supabase } from './supabase'; // Import the connection we made
+import { supabase } from './supabase';
+
+// Lazy load heavy views — only loaded when user switches to them
+const CalendarView = lazy(() => import('./components/CalendarView'));
+const WeeklyView = lazy(() => import('./components/WeeklyView'));
 
 // Define Filter Types
 type FilterType = 'all' | 'noam' | 'omer' | 'both';
@@ -27,7 +29,7 @@ const filterColors: Record<FilterType, string> = {
 type ViewMode = 'list' | 'weekly' | 'calendar';
 
 export default function App() {
-  const [tasks, setTasks] = useState<Task[]>([]); // Start empty, wait for DB
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -35,7 +37,7 @@ export default function App() {
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
 
   // --- 1. Fetch Tasks from Supabase ---
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     const { data, error } = await supabase
       .from('tasks')
       .select('*')
@@ -46,70 +48,84 @@ export default function App() {
     } else {
       setTasks(data || []);
     }
-  };
+  }, []);
 
-  // --- 2. Real-time Setup ---
+  // --- 2. Smart Real-time — apply changes from payload instead of re-fetching ---
   useEffect(() => {
-    // Initial fetch
     fetchTasks();
 
-    // Listen for ANY change in the DB (Insert, Update, Delete)
     const channel = supabase
       .channel('realtime-tasks')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'tasks' },
-        () => {
-          fetchTasks(); // Re-fetch data immediately when something happens
+        { event: 'INSERT', schema: 'public', table: 'tasks' },
+        (payload) => {
+          setTasks(prev => {
+            // Avoid duplicates from optimistic inserts
+            if (prev.some(t => t.id === (payload.new as Task).id)) return prev;
+            return [payload.new as Task, ...prev];
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'tasks' },
+        (payload) => {
+          setTasks(prev => prev.map(t => t.id === (payload.new as Task).id ? payload.new as Task : t));
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'tasks' },
+        (payload) => {
+          setTasks(prev => prev.filter(t => t.id !== (payload.old as { id: number }).id));
         }
       )
       .subscribe();
 
-    // Cleanup when leaving
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchTasks]);
 
-  // --- 3. Database Actions ---
+  // --- 3. Database Actions (useCallback for stable references) ---
 
-  const handleAdd = async (newTask: { title: string; notes: string; assignee: 'noam' | 'omer' | 'both'; due_date: string | null }) => {
-    // We send data to Supabase. The 'useEffect' above will see the new row and update the screen automatically.
+  const handleAdd = useCallback(async (newTask: { title: string; notes: string; assignee: 'noam' | 'omer' | 'both'; due_date: string | null }) => {
     const { error } = await supabase.from('tasks').insert([
       {
         title: newTask.title,
         notes: newTask.notes,
         assignee: newTask.assignee,
         due_date: newTask.due_date,
-        is_complete: false // Default
+        is_complete: false
       }
     ]);
-
     if (error) console.error('Error adding task:', error);
-  };
+  }, []);
 
-  const handleToggle = async (id: string | number) => {
-    // 1. Find the current status
-    const task = tasks.find((t) => t.id === id);
-    if (!task) return;
+  const handleToggle = useCallback(async (id: string | number) => {
+    let originalComplete: boolean | null = null;
+    setTasks(prev => {
+      const task = prev.find(t => t.id === id);
+      if (!task) return prev;
+      originalComplete = task.is_complete;
+      return prev.map(t => t.id === id ? { ...t, is_complete: !t.is_complete } : t);
+    });
 
-    // 2. Optimistic Update (makes it feel instant)
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, is_complete: !t.is_complete } : t));
+    if (originalComplete === null) return;
 
-    // 3. Send to DB
     const { error } = await supabase
       .from('tasks')
-      .update({ is_complete: !task.is_complete })
+      .update({ is_complete: !originalComplete })
       .eq('id', id);
 
     if (error) {
       console.error('Error toggling task:', error);
-      fetchTasks(); // Revert if failed
+      fetchTasks();
     }
-  };
+  }, [fetchTasks]);
 
-  const handleDelete = async (id: string | number) => {
-    // Optimistic
+  const handleDelete = useCallback(async (id: string | number) => {
     setTasks(prev => prev.filter(t => t.id !== id));
 
     const { error } = await supabase
@@ -121,10 +137,9 @@ export default function App() {
       console.error('Error deleting task:', error);
       fetchTasks();
     }
-  };
+  }, [fetchTasks]);
 
-  const handleUpdateNotes = async (id: string | number, notes: string) => {
-    // Optimistic
+  const handleUpdateNotes = useCallback(async (id: string | number, notes: string) => {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, notes } : t));
 
     const { error } = await supabase
@@ -133,10 +148,9 @@ export default function App() {
       .eq('id', id);
 
     if (error) console.error('Error updating notes:', error);
-  };
+  }, []);
 
-  const handleUpdateDueDate = async (id: string | number, due_date: string | null) => {
-    // Optimistic
+  const handleUpdateDueDate = useCallback(async (id: string | number, due_date: string | null) => {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, due_date } : t));
 
     const { error } = await supabase
@@ -148,9 +162,9 @@ export default function App() {
       console.error('Error updating due date:', error);
       fetchTasks();
     }
-  };
+  }, [fetchTasks]);
 
-  // --- Sorting & Filtering (Same as before) ---
+  // --- Sorting & Filtering (fully memoized) ---
   const filteredTasks = useMemo(() => {
     const filtered = tasks.filter((t) => {
       if (activeFilter === 'all') return true;
@@ -165,10 +179,15 @@ export default function App() {
     });
   }, [tasks, activeFilter]);
 
-  const activeTasks = filteredTasks.filter((t) => !t.is_complete);
-  const datedTasks = activeTasks.filter((t) => t.due_date);
-  const undatedTasks = activeTasks.filter((t) => !t.due_date);
-  const completedTasks = filteredTasks.filter((t) => t.is_complete);
+  const { activeTasks, datedTasks, undatedTasks, completedTasks } = useMemo(() => {
+    const active = filteredTasks.filter((t) => !t.is_complete);
+    return {
+      activeTasks: active,
+      datedTasks: active.filter((t) => t.due_date),
+      undatedTasks: active.filter((t) => !t.due_date),
+      completedTasks: filteredTasks.filter((t) => t.is_complete),
+    };
+  }, [filteredTasks]);
 
   // --- Render ---
   return (
@@ -394,11 +413,15 @@ export default function App() {
               </motion.div>
             ) : viewMode === 'weekly' ? (
               <motion.div key="weekly" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <WeeklyView tasks={tasks} onToggle={handleToggle} />
+                <Suspense fallback={null}>
+                  <WeeklyView tasks={tasks} onToggle={handleToggle} />
+                </Suspense>
               </motion.div>
             ) : (
               <motion.div key="calendar" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <CalendarView tasks={tasks} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} onUpdateDueDate={handleUpdateDueDate} />
+                <Suspense fallback={null}>
+                  <CalendarView tasks={tasks} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} onUpdateDueDate={handleUpdateDueDate} />
+                </Suspense>
               </motion.div>
             )}
           </AnimatePresence>
