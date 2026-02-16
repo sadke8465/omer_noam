@@ -41,20 +41,6 @@ export default function App() {
     if ((window as any).__onesignal_loaded) return;
     (window as any).__onesignal_loaded = true;
 
-    // Patch: Intercept OneSignal's SW registration to fix the path
-    if ('serviceWorker' in navigator) {
-      const originalRegister = navigator.serviceWorker.register.bind(navigator.serviceWorker);
-      navigator.serviceWorker.register = function (scriptURL: string | URL, options?: RegistrationOptions) {
-        let url = typeof scriptURL === 'string' ? scriptURL : scriptURL.toString();
-        // Fix OneSignal's broken path: if it tries to register a mangled URL, redirect to correct one
-        if (url.includes('OneSignal') && !url.startsWith('https://sadke8465.github.io')) {
-          url = '/omer_noam/OneSignalSDKWorker.js';
-        }
-        return originalRegister(url, { ...options, scope: '/omer_noam/' });
-      } as any;
-    }
-
-    // Load OneSignal CDN SDK
     (window as any).OneSignalDeferred = (window as any).OneSignalDeferred || [];
     const script = document.createElement('script');
     script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
@@ -64,6 +50,7 @@ export default function App() {
     (window as any).OneSignalDeferred.push(async function (OS: any) {
       await OS.init({
         appId: "856c86f5-588e-4dd1-a5d8-049f8af01a08",
+        serviceWorkerPath: "/OneSignalSDKWorker.js",
         autoPrompt: true,
         notifyButton: { enable: false },
       });
