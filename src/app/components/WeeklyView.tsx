@@ -149,7 +149,7 @@ export default function WeeklyView({ tasks, onToggle }: WeeklyViewProps) {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.15, duration: 0.4 }}
-          className="flex flex-col items-center py-20 text-center"
+          className="flex flex-col items-center py-20 text-center gpu-accelerated"
         >
           <Sparkles className="w-8 h-8 text-gray-200 mb-3" />
           <p className="text-[14px] text-gray-300">שבוע נקי!</p>
@@ -174,9 +174,10 @@ export default function WeeklyView({ tasks, onToggle }: WeeklyViewProps) {
                   damping: 28,
                 }}
                 className={`
-                  bg-white/80 backdrop-blur-xl rounded-2xl
+                  bg-white rounded-2xl
                   shadow-[0_1px_3px_rgba(0,0,0,0.04)]
                   px-5 py-4 mb-2.5
+                  gpu-accelerated
                   ${isOverdue ? 'border border-red-100' : ''}
                 `}
               >
@@ -249,7 +250,7 @@ export default function WeeklyView({ tasks, onToggle }: WeeklyViewProps) {
                   <div className="h-px bg-gray-200/60 flex-1" />
                 </div>
 
-                <div className="bg-white/60 backdrop-blur-xl rounded-2xl px-5 py-3.5 space-y-2.5">
+                <div className="bg-white/60 rounded-2xl px-5 py-3.5 space-y-2.5 gpu-accelerated">
                   {completedThisWeek.map((task, idx) => {
                     const config = ASSIGNEE_CONFIG[task.assignee];
                     return (

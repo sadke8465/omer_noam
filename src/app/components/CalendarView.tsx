@@ -145,7 +145,7 @@ export default function CalendarView({ tasks, onToggle, onDelete, onUpdateNotes,
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, type: 'spring', stiffness: 350, damping: 30 }}
-        className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden"
+        className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden gpu-accelerated"
       >
         {/* Month navigation */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
@@ -275,7 +275,8 @@ export default function CalendarView({ tasks, onToggle, onDelete, onUpdateNotes,
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+            transition={{ type: 'spring', stiffness: 450, damping: 28, mass: 0.6 }}
+            style={{ willChange: 'height, opacity' }}
             className="overflow-hidden"
           >
             <div className="pt-5">

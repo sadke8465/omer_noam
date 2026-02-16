@@ -299,8 +299,7 @@ export default function App() {
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.25, delay: Math.min(i * 0.03, 0.3), ease: [0.25, 0.1, 0.25, 1] }}
-                    layout
-                    className="mb-2"
+                    className="mb-2 gpu-accelerated"
                   >
                     <TaskCard task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} onUpdateDueDate={handleUpdateDueDate} />
                   </motion.div>
@@ -311,7 +310,7 @@ export default function App() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.3, delay: 0.05 }}
-                    className="flex flex-col items-center justify-center py-24 text-center"
+                    className="flex flex-col items-center justify-center py-24 text-center gpu-accelerated"
                   >
                     <div className="text-[40px] mb-3">✨</div>
                     <p className="text-[14px] text-gray-300">אין משימות</p>

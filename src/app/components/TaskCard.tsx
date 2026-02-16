@@ -116,7 +116,6 @@ function TaskCard({ task, onToggle, onDelete, onUpdateNotes, onUpdateDueDate }: 
 
   return (
     <motion.div
-      layout
       className="relative overflow-hidden"
       onTouchStart={() => setIsPressed(true)}
       onTouchEnd={() => setIsPressed(false)}
@@ -125,14 +124,14 @@ function TaskCard({ task, onToggle, onDelete, onUpdateNotes, onUpdateDueDate }: 
       onMouseLeave={() => setIsPressed(false)}
     >
       <motion.div
-        layout
         animate={{ scale: isPressed ? 0.98 : 1 }}
-        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+        transition={{ type: 'spring', stiffness: 450, damping: 25, mass: 0.5 }}
+        style={{ willChange: 'transform' }}
         className={`
           relative px-4 py-3.5
-          bg-white/80 backdrop-blur-xl
+          bg-white
           rounded-2xl
-          transition-shadow duration-300
+          gpu-accelerated
           ${task.is_complete ? 'opacity-40' : 'shadow-[0_1px_3px_rgba(0,0,0,0.04)]'}
         `}
         dir="rtl"
@@ -237,7 +236,8 @@ function TaskCard({ task, onToggle, onDelete, onUpdateNotes, onUpdateDueDate }: 
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+              transition={{ type: 'spring', stiffness: 450, damping: 28, mass: 0.6 }}
+              style={{ willChange: 'height, opacity' }}
               className="overflow-hidden"
             >
               <div className="pt-3 pr-[34px] space-y-2">
