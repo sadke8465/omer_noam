@@ -36,35 +36,45 @@ export default function App() {
   const [isSomedayOpen, setIsSomedayOpen] = useState(true);
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
 
-  // --- OneSignal Push Notifications (CDN SDK) ---
+  // --- OneSignal Push Notifications ---
   useEffect(() => {
-    // Skip if already loaded
     if ((window as any).__onesignal_loaded) return;
     (window as any).__onesignal_loaded = true;
 
-    (window as any).OneSignalDeferred = (window as any).OneSignalDeferred || [];
-
-    // Load the OneSignal SDK script
-    const script = document.createElement('script');
-    script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
-    script.defer = true;
-    document.head.appendChild(script);
-
-    (window as any).OneSignalDeferred.push(async function (OS: any) {
-      await OS.init({
-        appId: "856c86f5-588e-4dd1-a5d8-049f8af01a08",
-        serviceWorkerPath: "/omer_noam/OneSignalSDKWorker.js",
-        serviceWorkerParam: { scope: "/omer_noam/" },
-        autoPrompt: true,
-        notifyButton: { enable: false },
-      });
-
-      // Request permission after init (triggers native iOS prompt)
-      const permission = OS.Notifications.permission;
-      if (!permission) {
-        OS.Notifications.requestPermission();
+    const setup = async () => {
+      // 1. Register the service worker OURSELVES first (bypasses OneSignal's broken path resolution)
+      if ('serviceWorker' in navigator) {
+        try {
+          await navigator.serviceWorker.register('/omer_noam/OneSignalSDKWorker.js', {
+            scope: '/omer_noam/',
+          });
+        } catch (e) {
+          console.error('SW registration failed:', e);
+        }
       }
-    });
+
+      // 2. Load OneSignal CDN SDK
+      (window as any).OneSignalDeferred = (window as any).OneSignalDeferred || [];
+      const script = document.createElement('script');
+      script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+      script.defer = true;
+      document.head.appendChild(script);
+
+      (window as any).OneSignalDeferred.push(async function (OS: any) {
+        await OS.init({
+          appId: "856c86f5-588e-4dd1-a5d8-049f8af01a08",
+          // Don't pass serviceWorkerPath — we already registered it
+          autoPrompt: true,
+          notifyButton: { enable: false },
+        });
+
+        // Request native permission prompt
+        if (!OS.Notifications.permission) {
+          OS.Notifications.requestPermission();
+        }
+      });
+    };
+    setup();
   }, []);
 
   // --- 1. Fetch Tasks from Supabase ---
