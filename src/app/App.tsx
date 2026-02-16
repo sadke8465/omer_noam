@@ -281,7 +281,7 @@ export default function App() {
       </div>
 
       {/* Scrollable content area — only this scrolls */}
-      <div className="flex-1 min-h-0 overflow-y-auto scrollable-content">
+      <div className="flex-1 min-h-0 overflow-y-auto scrollable-content pb-8">
         <div className="max-w-lg mx-auto px-5 pb-[env(safe-area-inset-bottom,16px)]">
           <AnimatePresence mode="wait">
             {viewMode === 'list' ? (
