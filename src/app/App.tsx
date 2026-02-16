@@ -36,29 +36,35 @@ export default function App() {
   const [isSomedayOpen, setIsSomedayOpen] = useState(true);
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
 
-  // --- OneSignal Push Notifications (CDN SDK — more reliable on subdirectory deployments) ---
+  // --- OneSignal Push Notifications (CDN SDK) ---
   useEffect(() => {
-    const initOneSignal = async () => {
-      // Skip if already loaded
-      if ((window as any).OneSignalDeferred) return;
+    // Skip if already loaded
+    if ((window as any).__onesignal_loaded) return;
+    (window as any).__onesignal_loaded = true;
 
-      (window as any).OneSignalDeferred = (window as any).OneSignalDeferred || [];
+    (window as any).OneSignalDeferred = (window as any).OneSignalDeferred || [];
 
-      // Load the OneSignal SDK script
-      const script = document.createElement('script');
-      script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
-      script.defer = true;
-      document.head.appendChild(script);
+    // Load the OneSignal SDK script
+    const script = document.createElement('script');
+    script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+    script.defer = true;
+    document.head.appendChild(script);
 
-      (window as any).OneSignalDeferred.push(async function (OneSignal: any) {
-        await OneSignal.init({
-          appId: "856c86f5-588e-4dd1-a5d8-049f8af01a08",
-          serviceWorkerPath: "/omer_noam/OneSignalSDKWorker.js",
-          serviceWorkerParam: { scope: "/omer_noam/" },
-        });
+    (window as any).OneSignalDeferred.push(async function (OS: any) {
+      await OS.init({
+        appId: "856c86f5-588e-4dd1-a5d8-049f8af01a08",
+        serviceWorkerPath: "/omer_noam/OneSignalSDKWorker.js",
+        serviceWorkerParam: { scope: "/omer_noam/" },
+        autoPrompt: true,
+        notifyButton: { enable: false },
       });
-    };
-    initOneSignal();
+
+      // Request permission after init (triggers native iOS prompt)
+      const permission = OS.Notifications.permission;
+      if (!permission) {
+        OS.Notifications.requestPermission();
+      }
+    });
   }, []);
 
   // --- 1. Fetch Tasks from Supabase ---
