@@ -43,7 +43,7 @@ export default function App() {
       await OneSignal.init({
         appId: "856c86f5-588e-4dd1-a5d8-049f8af01a08",
         allowLocalhostAsSecureOrigin: true,
-        serviceWorkerPath: "OneSignalSDKWorker.js",
+        serviceWorkerPath: "/omer_noam/OneSignalSDKWorker.js",
         serviceWorkerParam: { scope: "/omer_noam/" },
         promptOptions: {
           slidedown: {
