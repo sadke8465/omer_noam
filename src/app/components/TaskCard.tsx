@@ -318,7 +318,7 @@ function TaskCard({ task, onToggle, onDelete, onUpdateNotes, onUpdateDueDate }: 
                   placeholder="הוסף הערה..."
                   rows={1}
                   className="
-                    w-full text-[13px] text-gray-500 placeholder-gray-300
+                    w-full text-[16px] text-gray-500 placeholder-gray-300
                     bg-gray-50/60 rounded-xl px-3 py-2.5
                     border-0 outline-none resize-none
                     focus:bg-gray-50 focus:ring-1 focus:ring-gray-900/5

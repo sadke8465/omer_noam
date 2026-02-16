@@ -143,7 +143,7 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, defaultAssignee }
                       }}
                       placeholder="הערות..."
                       rows={1}
-                      className="w-full text-[14px] text-gray-500 placeholder-gray-300 bg-transparent border-0 outline-none resize-none leading-[1.5] mt-1"
+                      className="w-full text-[16px] text-gray-500 placeholder-gray-300 bg-transparent border-0 outline-none resize-none leading-[1.5] mt-1"
                     />
                   </motion.div>
                 )}
