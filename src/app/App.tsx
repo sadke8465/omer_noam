@@ -41,40 +41,37 @@ export default function App() {
     if ((window as any).__onesignal_loaded) return;
     (window as any).__onesignal_loaded = true;
 
-    const setup = async () => {
-      // 1. Register the service worker OURSELVES first (bypasses OneSignal's broken path resolution)
-      if ('serviceWorker' in navigator) {
-        try {
-          await navigator.serviceWorker.register('/omer_noam/OneSignalSDKWorker.js', {
-            scope: '/omer_noam/',
-          });
-        } catch (e) {
-          console.error('SW registration failed:', e);
+    // Patch: Intercept OneSignal's SW registration to fix the path
+    if ('serviceWorker' in navigator) {
+      const originalRegister = navigator.serviceWorker.register.bind(navigator.serviceWorker);
+      navigator.serviceWorker.register = function (scriptURL: string | URL, options?: RegistrationOptions) {
+        let url = typeof scriptURL === 'string' ? scriptURL : scriptURL.toString();
+        // Fix OneSignal's broken path: if it tries to register a mangled URL, redirect to correct one
+        if (url.includes('OneSignal') && !url.startsWith('https://sadke8465.github.io')) {
+          url = '/omer_noam/OneSignalSDKWorker.js';
         }
-      }
+        return originalRegister(url, { ...options, scope: '/omer_noam/' });
+      } as any;
+    }
 
-      // 2. Load OneSignal CDN SDK
-      (window as any).OneSignalDeferred = (window as any).OneSignalDeferred || [];
-      const script = document.createElement('script');
-      script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
-      script.defer = true;
-      document.head.appendChild(script);
+    // Load OneSignal CDN SDK
+    (window as any).OneSignalDeferred = (window as any).OneSignalDeferred || [];
+    const script = document.createElement('script');
+    script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+    script.defer = true;
+    document.head.appendChild(script);
 
-      (window as any).OneSignalDeferred.push(async function (OS: any) {
-        await OS.init({
-          appId: "856c86f5-588e-4dd1-a5d8-049f8af01a08",
-          // Don't pass serviceWorkerPath — we already registered it
-          autoPrompt: true,
-          notifyButton: { enable: false },
-        });
-
-        // Request native permission prompt
-        if (!OS.Notifications.permission) {
-          OS.Notifications.requestPermission();
-        }
+    (window as any).OneSignalDeferred.push(async function (OS: any) {
+      await OS.init({
+        appId: "856c86f5-588e-4dd1-a5d8-049f8af01a08",
+        autoPrompt: true,
+        notifyButton: { enable: false },
       });
-    };
-    setup();
+
+      if (!OS.Notifications.permission) {
+        OS.Notifications.requestPermission();
+      }
+    });
   }, []);
 
   // --- 1. Fetch Tasks from Supabase ---
