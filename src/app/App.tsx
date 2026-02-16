@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, List, CalendarDays, Rows3, ChevronDown } from 'lucide-react';
-import OneSignal from 'react-onesignal';
 import TaskCard, { type Task } from './components/TaskCard';
 import AddTaskModal from './components/AddTaskModal';
 import { supabase } from './supabase';
@@ -37,26 +36,29 @@ export default function App() {
   const [isSomedayOpen, setIsSomedayOpen] = useState(true);
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
 
-  // --- OneSignal Push Notifications ---
+  // --- OneSignal Push Notifications (CDN SDK — more reliable on subdirectory deployments) ---
   useEffect(() => {
-    const runOneSignal = async () => {
-      await OneSignal.init({
-        appId: "856c86f5-588e-4dd1-a5d8-049f8af01a08",
-        allowLocalhostAsSecureOrigin: true,
-        serviceWorkerPath: "/omer_noam/OneSignalSDKWorker.js",
-        serviceWorkerParam: { scope: "/omer_noam/" },
-        promptOptions: {
-          slidedown: {
-            prompts: [{
-              type: "push",
-              autoPrompt: true,
-              delay: { pageViews: 1, timeDelay: 3 },
-            }]
-          }
-        }
+    const initOneSignal = async () => {
+      // Skip if already loaded
+      if ((window as any).OneSignalDeferred) return;
+
+      (window as any).OneSignalDeferred = (window as any).OneSignalDeferred || [];
+
+      // Load the OneSignal SDK script
+      const script = document.createElement('script');
+      script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+      script.defer = true;
+      document.head.appendChild(script);
+
+      (window as any).OneSignalDeferred.push(async function (OneSignal: any) {
+        await OneSignal.init({
+          appId: "856c86f5-588e-4dd1-a5d8-049f8af01a08",
+          serviceWorkerPath: "/omer_noam/OneSignalSDKWorker.js",
+          serviceWorkerParam: { scope: "/omer_noam/" },
+        });
       });
     };
-    runOneSignal();
+    initOneSignal();
   }, []);
 
   // --- 1. Fetch Tasks from Supabase ---
