@@ -17,6 +17,18 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function (OneSignal) {
+      await OneSignal.init({
+        appId: "856c86f5-588e-4dd1-a5d8-049f8af01a08",
+        safari_web_id: "web.onesignal.auto.68a78e72-ca6b-43d3-aa15-83c87cfb9ced",
+        serviceWorkerPath: "/OneSignalSDKWorker.js",
+        notifyButton: { enable: false },
+      });
+    });
+  </script>
 </head>
 
 <body style="background-color: #F8F8FA;">

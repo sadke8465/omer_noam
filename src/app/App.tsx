@@ -36,27 +36,7 @@ export default function App() {
   const [isSomedayOpen, setIsSomedayOpen] = useState(true);
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
 
-  // --- OneSignal Push Notifications ---
-  useEffect(() => {
-    if ((window as any).__onesignal_loaded) return;
-    (window as any).__onesignal_loaded = true;
-
-    (window as any).OneSignalDeferred = (window as any).OneSignalDeferred || [];
-    const script = document.createElement('script');
-    script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
-    script.defer = true;
-    document.head.appendChild(script);
-
-    (window as any).OneSignalDeferred.push(async function (OS: any) {
-      await OS.init({
-        appId: "856c86f5-588e-4dd1-a5d8-049f8af01a08",
-        serviceWorkerPath: "/OneSignalSDKWorker.js",
-        notifyButton: { enable: false },
-      });
-    });
-  }, []);
-
-  // Trigger native notification prompt on header tap (iOS requires a user gesture)
+  // OneSignal is initialized in index.html — just need the permission request handler
   const handleRequestNotifications = useCallback(() => {
     const OS = (window as any).OneSignal;
     if (OS && OS.Notifications && !OS.Notifications.permission) {
