@@ -5,7 +5,6 @@ const ONESIGNAL_APP_ID = "856c86f5-588e-4dd1-a5d8-049f8af01a08";
 const ONESIGNAL_REST_API_KEY = Deno.env.get("ONESIGNAL_REST_API_KEY") || "";
 const ONESIGNAL_API_URL = "https://api.onesignal.com/notifications";
 
-// Supabase connection for tracking scheduled notifications
 const SUPABASE_URL = "https://xpggmrkipeernskkmorj.supabase.co";
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
@@ -26,108 +25,7 @@ interface WebhookPayload {
     old_record: Task | null;
 }
 
-// ── Helpers ──
-
-const ASSIGNEE_LABELS: Record<string, string> = {
-    noam: "נועם",
-    omer: "עומר",
-    both: "שניכם",
-};
-
-function formatHebrewDate(dateStr: string): string {
-    const d = new Date(dateStr + "T00:00:00");
-    return d.toLocaleDateString("he-IL", { day: "numeric", month: "long" });
-}
-
-/** Create a Date object in Israel timezone for a given date string and time */
-function israelTime(dateStr: string, hours: number, minutes: number): Date {
-    // Create date in Israel time (UTC+2 or UTC+3 depending on DST)
-    const dateInIsrael = new Date(`${dateStr}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00+02:00`);
-    return dateInIsrael;
-}
-
-/** Schedule a single OneSignal notification */
-async function scheduleNotification(
-    title: string,
-    body: string,
-    sendAfter: Date,
-    taskId: number,
-    tag: string
-): Promise<string | null> {
-    // Don't schedule notifications in the past
-    if (sendAfter <= new Date()) return null;
-
-    const payload = {
-        app_id: ONESIGNAL_APP_ID,
-        included_segments: ["All"],
-        headings: { en: title },
-        contents: { en: body },
-        send_after: sendAfter.toISOString(),
-        data: { task_id: taskId, tag },
-    };
-
-    try {
-        const res = await fetch(ONESIGNAL_API_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Key ${ONESIGNAL_REST_API_KEY}`,
-            },
-            body: JSON.stringify(payload),
-        });
-
-        const data = await res.json();
-        if (data.id) {
-            // Store the notification ID for potential cancellation
-            await storeNotificationId(taskId, data.id, tag);
-            return data.id;
-        }
-        console.error("OneSignal error:", data);
-        return null;
-    } catch (err) {
-        console.error("Failed to schedule notification:", err);
-        return null;
-    }
-}
-
-/** Send an instant notification */
-async function sendInstantNotification(title: string, body: string): Promise<void> {
-    const payload = {
-        app_id: ONESIGNAL_APP_ID,
-        included_segments: ["All"],
-        headings: { en: title },
-        contents: { en: body },
-    };
-
-    try {
-        await fetch(ONESIGNAL_API_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Key ${ONESIGNAL_REST_API_KEY}`,
-            },
-            body: JSON.stringify(payload),
-        });
-    } catch (err) {
-        console.error("Failed to send notification:", err);
-    }
-}
-
-/** Cancel a scheduled OneSignal notification by its ID */
-async function cancelNotification(notificationId: string): Promise<void> {
-    try {
-        await fetch(`${ONESIGNAL_API_URL}/${notificationId}?app_id=${ONESIGNAL_APP_ID}`, {
-            method: "DELETE",
-            headers: {
-                Authorization: `Key ${ONESIGNAL_REST_API_KEY}`,
-            },
-        });
-    } catch (err) {
-        console.error("Failed to cancel notification:", err);
-    }
-}
-
-// ── Supabase helpers for tracking notification IDs ──
+// ── Supabase helpers ──
 
 async function supabaseFetch(path: string, options: RequestInit = {}) {
     return fetch(`${SUPABASE_URL}/rest/v1${path}`, {
@@ -142,72 +40,223 @@ async function supabaseFetch(path: string, options: RequestInit = {}) {
     });
 }
 
-async function storeNotificationId(taskId: number, notificationId: string, tag: string) {
+/** Get all active (non-complete) tasks for a specific due date */
+async function getTasksForDate(dueDate: string): Promise<Task[]> {
+    const res = await supabaseFetch(
+        `/tasks?due_date=eq.${dueDate}&is_complete=eq.false&select=*`
+    );
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
+// ── Notification ID tracking ──
+
+async function storeNotificationId(dueDate: string, notificationId: string, tag: string) {
     await supabaseFetch("/task_notifications", {
         method: "POST",
-        body: JSON.stringify({ task_id: taskId, notification_id: notificationId, tag }),
+        body: JSON.stringify({
+            task_id: 0, // legacy column — we track by tag now
+            notification_id: notificationId,
+            tag: `${dueDate}:${tag}`,
+        }),
     });
 }
 
-async function cancelAllForTask(taskId: number) {
-    // Get all scheduled notification IDs for this task
-    const res = await supabaseFetch(`/task_notifications?task_id=eq.${taskId}&select=notification_id`);
+async function cancelAllForDate(dueDate: string) {
+    // Get all scheduled notification IDs for this date
+    const res = await supabaseFetch(
+        `/task_notifications?tag=like.${dueDate}%25&select=notification_id,tag`
+    );
     const rows = await res.json();
 
-    if (Array.isArray(rows)) {
+    if (Array.isArray(rows) && rows.length > 0) {
         // Cancel each notification in OneSignal
-        await Promise.all(rows.map((r: { notification_id: string }) => cancelNotification(r.notification_id)));
+        await Promise.all(
+            rows.map((r: { notification_id: string }) =>
+                cancelOneSignalNotification(r.notification_id)
+            )
+        );
+        // Delete tracking records
+        await supabaseFetch(`/task_notifications?tag=like.${dueDate}%25`, {
+            method: "DELETE",
+        });
     }
-
-    // Delete tracking records
-    await supabaseFetch(`/task_notifications?task_id=eq.${taskId}`, { method: "DELETE" });
 }
 
-// ── Schedule the 3 reminder notifications for a task ──
+async function cancelOneSignalNotification(notificationId: string) {
+    try {
+        await fetch(
+            `${ONESIGNAL_API_URL}/${notificationId}?app_id=${ONESIGNAL_APP_ID}`,
+            {
+                method: "DELETE",
+                headers: { Authorization: `Key ${ONESIGNAL_REST_API_KEY}` },
+            }
+        );
+    } catch (err) {
+        console.error("Failed to cancel notification:", err);
+    }
+}
 
-async function scheduleReminders(task: Task) {
-    if (!task.due_date) return;
+// ── OneSignal API ──
 
-    const assigneeLabel = ASSIGNEE_LABELS[task.assignee] || task.assignee;
-    const dateLabel = formatHebrewDate(task.due_date);
+async function sendNotification(
+    title: string,
+    body: string,
+    sendAfter?: Date
+): Promise<string | null> {
+    // Don't schedule notifications in the past
+    if (sendAfter && sendAfter <= new Date()) return null;
 
-    // Calculate the day before
-    const dayBefore = new Date(task.due_date + "T00:00:00");
+    const payload: Record<string, unknown> = {
+        app_id: ONESIGNAL_APP_ID,
+        included_segments: ["All"],
+        headings: { en: title },
+        contents: { en: body },
+    };
+
+    if (sendAfter) {
+        payload.send_after = sendAfter.toISOString();
+    }
+
+    try {
+        const res = await fetch(ONESIGNAL_API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Key ${ONESIGNAL_REST_API_KEY}`,
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (data.id) return data.id;
+        console.error("OneSignal error:", data);
+        return null;
+    } catch (err) {
+        console.error("Failed to send notification:", err);
+        return null;
+    }
+}
+
+// ── Build summary text ──
+
+function buildSummary(tasks: Task[]): string {
+    // Group tasks by assignee
+    const omerTasks = tasks.filter((t) => t.assignee === "omer");
+    const noamTasks = tasks.filter((t) => t.assignee === "noam");
+    const bothTasks = tasks.filter((t) => t.assignee === "both");
+
+    const parts: string[] = [];
+
+    if (omerTasks.length > 0) {
+        const titles = joinTitles(omerTasks.map((t) => t.title));
+        parts.push(`עומר צריכה ${titles}`);
+    }
+
+    if (noamTasks.length > 0) {
+        const titles = joinTitles(noamTasks.map((t) => t.title));
+        parts.push(`נועם צריך ${titles}`);
+    }
+
+    if (bothTasks.length > 0) {
+        const titles = joinTitles(bothTasks.map((t) => t.title));
+        parts.push(`שניכם צריכים ${titles}`);
+    }
+
+    return parts.join(" ו");
+}
+
+function joinTitles(titles: string[]): string {
+    if (titles.length === 1) return titles[0];
+    const last = titles.pop()!;
+    return `${titles.join(", ")} ו${last}`;
+}
+
+// ── Israel timezone helper ──
+
+function israelTime(dateStr: string, hours: number, minutes: number): Date {
+    return new Date(
+        `${dateStr}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00+02:00`
+    );
+}
+
+// ── Schedule aggregated reminders for a specific date ──
+
+async function rescheduleRemindersForDate(dueDate: string) {
+    // 1. Cancel all existing notifications for this date
+    await cancelAllForDate(dueDate);
+
+    // 2. Get ALL active tasks for this date
+    const tasks = await getTasksForDate(dueDate);
+
+    // If no tasks, nothing to schedule
+    if (tasks.length === 0) return;
+
+    // 3. Build summary text
+    const summary = buildSummary(tasks);
+
+    // 4. Calculate the day before
+    const dayBefore = new Date(dueDate + "T00:00:00");
     dayBefore.setDate(dayBefore.getDate() - 1);
     const dayBeforeStr = dayBefore.toISOString().slice(0, 10);
 
-    // 1. Evening before (21:00)
-    await scheduleNotification(
-        `📋 תזכורת למחר`,
-        `${assigneeLabel}: "${task.title}" — מחר, ${dateLabel}`,
-        israelTime(dayBeforeStr, 21, 0),
-        task.id,
-        "evening-before"
-    );
+    // 5. Schedule 3 notifications
 
-    // 2. Morning of (10:00)
-    await scheduleNotification(
-        `☀️ משימה להיום`,
-        `${assigneeLabel}: "${task.title}" — היום`,
-        israelTime(task.due_date, 10, 0),
-        task.id,
-        "morning-of"
+    // Evening before (21:00)
+    const eveningBeforeId = await sendNotification(
+        "הכנות למחר",
+        `מחר, ${summary}`,
+        israelTime(dayBeforeStr, 21, 0)
     );
+    if (eveningBeforeId) {
+        await storeNotificationId(dueDate, eveningBeforeId, "evening-before");
+    }
 
-    // 3. Evening of (18:30)
-    await scheduleNotification(
-        `🔔 תזכורת אחרונה`,
-        `${assigneeLabel}: "${task.title}" — היום, שעה 18:30`,
-        israelTime(task.due_date, 18, 30),
-        task.id,
-        "evening-of"
+    // Morning of (10:00)
+    const morningId = await sendNotification(
+        "צהריים טובים מיילאבה ☀️",
+        `היום, ${summary}`,
+        israelTime(dueDate, 10, 0)
     );
+    if (morningId) {
+        await storeNotificationId(dueDate, morningId, "morning-of");
+    }
+
+    // Evening of (18:30)
+    const eveningId = await sendNotification(
+        "תזכורת אחרונה להיום!! 🔔",
+        `היום, ${summary}`,
+        israelTime(dueDate, 18, 30)
+    );
+    if (eveningId) {
+        await storeNotificationId(dueDate, eveningId, "evening-of");
+    }
+}
+
+// ── Completion notification ──
+
+async function sendCompletionNotification(task: Task) {
+    let text: string;
+
+    switch (task.assignee) {
+        case "omer":
+            text = `עומר סיימה ${task.title}!`;
+            break;
+        case "noam":
+            text = `נועם סיים ${task.title}!`;
+            break;
+        case "both":
+        default:
+            text = `סיימתם ${task.title}!`;
+            break;
+    }
+
+    await sendNotification("כל הכבוד 🥳", text);
 }
 
 // ── Main handler ──
 
 Deno.serve(async (req) => {
-    // Verify method
     if (req.method !== "POST") {
         return new Response("Method not allowed", { status: 405 });
     }
@@ -216,11 +265,13 @@ Deno.serve(async (req) => {
         const payload: WebhookPayload = await req.json();
         const { type, record, old_record } = payload;
 
+        // Collect all affected dates that need rescheduling
+        const datesToReschedule = new Set<string>();
+
         switch (type) {
             case "INSERT": {
-                // New task with a due date → schedule reminders
                 if (record?.due_date && !record.is_complete) {
-                    await scheduleReminders(record);
+                    datesToReschedule.add(record.due_date);
                 }
                 break;
             }
@@ -228,41 +279,49 @@ Deno.serve(async (req) => {
             case "UPDATE": {
                 if (!record) break;
 
-                // Task completed → send instant notification
+                // Task completed → send instant notification + reschedule that date
                 if (record.is_complete && !old_record?.is_complete) {
-                    const who = ASSIGNEE_LABELS[record.assignee] || record.assignee;
-                    await sendInstantNotification(
-                        `✅ הושלם!`,
-                        `${who} סיימ/ה: "${record.title}"`
-                    );
-                    // Cancel any pending reminders
-                    await cancelAllForTask(record.id);
-                    break;
-                }
-
-                // Task uncompleted → reschedule if has date
-                if (!record.is_complete && old_record?.is_complete && record.due_date) {
-                    await scheduleReminders(record);
-                    break;
-                }
-
-                // Due date changed → cancel old, schedule new
-                if (record.due_date !== old_record?.due_date) {
-                    await cancelAllForTask(record.id);
-                    if (record.due_date && !record.is_complete) {
-                        await scheduleReminders(record);
+                    await sendCompletionNotification(record);
+                    if (record.due_date) {
+                        datesToReschedule.add(record.due_date);
                     }
+                    break;
+                }
+
+                // Task uncompleted → reschedule its date
+                if (!record.is_complete && old_record?.is_complete && record.due_date) {
+                    datesToReschedule.add(record.due_date);
+                    break;
+                }
+
+                // Due date changed → reschedule both old and new dates
+                if (record.due_date !== old_record?.due_date) {
+                    if (old_record?.due_date) datesToReschedule.add(old_record.due_date);
+                    if (record.due_date && !record.is_complete) datesToReschedule.add(record.due_date);
+                }
+
+                // Title or assignee changed → reschedule the date (summary text changes)
+                if (
+                    record.due_date &&
+                    !record.is_complete &&
+                    (record.title !== old_record?.title || record.assignee !== old_record?.assignee)
+                ) {
+                    datesToReschedule.add(record.due_date);
                 }
                 break;
             }
 
             case "DELETE": {
-                // Task deleted → cancel all scheduled notifications
-                if (old_record) {
-                    await cancelAllForTask(old_record.id);
+                if (old_record?.due_date) {
+                    datesToReschedule.add(old_record.due_date);
                 }
                 break;
             }
+        }
+
+        // Reschedule all affected dates
+        for (const date of datesToReschedule) {
+            await rescheduleRemindersForDate(date);
         }
 
         return new Response(JSON.stringify({ success: true }), {
