@@ -45,6 +45,15 @@ export default function App() {
         allowLocalhostAsSecureOrigin: true,
         serviceWorkerPath: "OneSignalSDKWorker.js",
         serviceWorkerParam: { scope: "/omer_noam/" },
+        promptOptions: {
+          slidedown: {
+            prompts: [{
+              type: "push",
+              autoPrompt: true,
+              delay: { pageViews: 1, timeDelay: 3 },
+            }]
+          }
+        }
       });
     };
     runOneSignal();
