@@ -71,7 +71,7 @@ async function scheduleNotification(
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Key ${ONESIGNAL_REST_API_KEY}`,
+                Authorization: `Basic ${ONESIGNAL_REST_API_KEY}`,
             },
             body: JSON.stringify(payload),
         });
@@ -104,7 +104,7 @@ async function sendInstantNotification(title: string, body: string): Promise<voi
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Key ${ONESIGNAL_REST_API_KEY}`,
+                Authorization: `Basic ${ONESIGNAL_REST_API_KEY}`,
             },
             body: JSON.stringify(payload),
         });
@@ -119,7 +119,7 @@ async function cancelNotification(notificationId: string): Promise<void> {
         await fetch(`${ONESIGNAL_API_URL}/${notificationId}?app_id=${ONESIGNAL_APP_ID}`, {
             method: "DELETE",
             headers: {
-                Authorization: `Key ${ONESIGNAL_REST_API_KEY}`,
+                Authorization: `Basic ${ONESIGNAL_REST_API_KEY}`,
             },
         });
     } catch (err) {
