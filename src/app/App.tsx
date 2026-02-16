@@ -51,14 +51,17 @@ export default function App() {
       await OS.init({
         appId: "856c86f5-588e-4dd1-a5d8-049f8af01a08",
         serviceWorkerPath: "/OneSignalSDKWorker.js",
-        autoPrompt: true,
         notifyButton: { enable: false },
       });
-
-      if (!OS.Notifications.permission) {
-        OS.Notifications.requestPermission();
-      }
     });
+  }, []);
+
+  // Trigger native notification prompt on header tap (iOS requires a user gesture)
+  const handleRequestNotifications = useCallback(() => {
+    const OS = (window as any).OneSignal;
+    if (OS && OS.Notifications && !OS.Notifications.permission) {
+      OS.Notifications.requestPermission();
+    }
   }, []);
 
   // --- 1. Fetch Tasks from Supabase ---
@@ -228,7 +231,8 @@ export default function App() {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="text-[28px] tracking-[-0.02em] text-gray-900"
+                className="text-[28px] tracking-[-0.02em] text-gray-900 cursor-pointer"
+                onClick={handleRequestNotifications}
               >
                 עומר ונועם 💛
               </motion.h1>
