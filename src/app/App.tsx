@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, List, CalendarDays, Rows3, ChevronDown } from 'lucide-react';
+import OneSignal from 'react-onesignal';
 import TaskCard, { type Task } from './components/TaskCard';
 import AddTaskModal from './components/AddTaskModal';
 import { supabase } from './supabase';
@@ -35,6 +36,19 @@ export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [isSomedayOpen, setIsSomedayOpen] = useState(true);
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
+
+  // --- OneSignal Push Notifications ---
+  useEffect(() => {
+    const runOneSignal = async () => {
+      await OneSignal.init({
+        appId: "856c86f5-588e-4dd1-a5d8-049f8af01a08",
+        allowLocalhostAsSecureOrigin: true,
+        serviceWorkerPath: "OneSignalSDKWorker.js",
+        serviceWorkerParam: { scope: "/omer_noam/" },
+      });
+    };
+    runOneSignal();
+  }, []);
 
   // --- 1. Fetch Tasks from Supabase ---
   const fetchTasks = useCallback(async () => {
