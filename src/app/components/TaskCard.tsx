@@ -8,6 +8,7 @@ export interface Task {
   notes: string;
   assignee: 'noam' | 'omer' | 'both';
   due_date: string | null;
+  tag: string | null;
   is_complete: boolean;
   created_at: string;
 }
@@ -17,6 +18,16 @@ const assigneeConfig = {
   omer: { color: 'bg-pink-400', label: 'עומר', ring: 'ring-pink-400/20' },
   both: { color: 'bg-violet-500', label: 'ביחד', ring: 'ring-violet-500/20' },
 };
+
+const PRESET_EMOJIS = ['🏠', '🛒', '💼', '🎯', '🔥', '⭐', '🎉', '❤️', '📚', '💡', '🏋️', '✈️'];
+
+function isValidEmoji(str: string): boolean {
+  const trimmed = str.trim();
+  if (!trimmed) return false;
+  const seg = new Intl.Segmenter();
+  const segments = Array.from(seg.segment(trimmed));
+  return segments.length === 1;
+}
 
 function formatDate(dateStr: string | null): string | null {
   if (!dateStr) return null;
@@ -78,14 +89,17 @@ interface TaskCardProps {
   onDelete: (id: number) => void;
   onUpdateNotes: (id: number, notes: string) => void;
   onUpdateDueDate?: (id: number, dueDate: string | null) => void;
+  onUpdateTag?: (id: number, tag: string | null) => void;
 }
 
-function TaskCard({ task, onToggle, onDelete, onUpdateNotes, onUpdateDueDate }: TaskCardProps) {
+function TaskCard({ task, onToggle, onDelete, onUpdateNotes, onUpdateDueDate, onUpdateTag }: TaskCardProps) {
   const [isPressed, setIsPressed] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [localNotes, setLocalNotes] = useState(task.notes);
   const [localDueDate, setLocalDueDate] = useState(task.due_date || '');
+  const [showTagPicker, setShowTagPicker] = useState(false);
+  const [customEmojiInput, setCustomEmojiInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const config = assigneeConfig[task.assignee];
   const dateInfo = getDateInfo(task.due_date, task.is_complete);
@@ -109,6 +123,25 @@ function TaskCard({ task, onToggle, onDelete, onUpdateNotes, onUpdateDueDate }: 
   const handleBlur = () => {
     if (localNotes !== task.notes) {
       onUpdateNotes(task.id, localNotes);
+    }
+  };
+
+  const handleSelectTag = (emoji: string) => {
+    onUpdateTag?.(task.id, emoji);
+    setShowTagPicker(false);
+    setCustomEmojiInput('');
+  };
+
+  const handleClearTag = () => {
+    onUpdateTag?.(task.id, null);
+    setShowTagPicker(false);
+    setCustomEmojiInput('');
+  };
+
+  const handleCustomEmojiInput = (val: string) => {
+    setCustomEmojiInput(val);
+    if (isValidEmoji(val)) {
+      handleSelectTag(val.trim());
     }
   };
 
@@ -195,6 +228,12 @@ function TaskCard({ task, onToggle, onDelete, onUpdateNotes, onUpdateDueDate }: 
                       {dateInfo.countdown}
                     </span>
                   )}
+                </>
+              )}
+              {task.tag && (
+                <>
+                  <span className="text-gray-200">&middot;</span>
+                  <span className="text-[12px] leading-none">{task.tag}</span>
                 </>
               )}
               {hasNotes && !isExpanded && (
@@ -307,6 +346,75 @@ function TaskCard({ task, onToggle, onDelete, onUpdateNotes, onUpdateDueDate }: 
                       <span>הוסף ליומן</span>
                     </motion.a>
                   )}
+                </div>
+
+                {/* Tag row */}
+                <div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowTagPicker(!showTagPicker);
+                      setCustomEmojiInput('');
+                    }}
+                    className="inline-flex items-center gap-1.5 h-8 rounded-xl bg-gray-50/60 px-3 transition-all hover:bg-gray-100/80"
+                  >
+                    {task.tag ? (
+                      <span className="text-[15px] leading-none">{task.tag}</span>
+                    ) : (
+                      <span className="text-[12px] text-gray-400">הוסף תגית</span>
+                    )}
+                  </button>
+
+                  <AnimatePresence>
+                    {showTagPicker && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ type: 'spring', damping: 28, stiffness: 380 }}
+                        className="overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="mt-2 p-2.5 bg-gray-50/80 rounded-xl">
+                          {/* Preset emoji grid */}
+                          <div className="grid grid-cols-6 gap-1 mb-2">
+                            {PRESET_EMOJIS.map((emoji) => (
+                              <button
+                                key={emoji}
+                                onClick={() => handleSelectTag(emoji)}
+                                className={`
+                                  h-9 rounded-lg text-[18px] flex items-center justify-center transition-all
+                                  ${task.tag === emoji ? 'bg-gray-200' : 'hover:bg-gray-100/80'}
+                                `}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Custom emoji input */}
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={customEmojiInput}
+                              onChange={(e) => handleCustomEmojiInput(e.target.value)}
+                              placeholder="אמוג׳י מותאם..."
+                              className="flex-1 text-[14px] bg-white rounded-lg px-3 h-8 border-0 outline-none text-gray-600 placeholder-gray-300"
+                              dir="rtl"
+                            />
+                            {task.tag && (
+                              <button
+                                onClick={handleClearTag}
+                                className="h-8 px-3 rounded-lg text-[12px] text-gray-400 hover:text-gray-600 hover:bg-white transition-all"
+                              >
+                                הסר
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 {/* Notes */}

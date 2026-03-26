@@ -10,16 +10,19 @@ const CalendarView = lazy(() => import('./components/CalendarView'));
 const WeeklyView = lazy(() => import('./components/WeeklyView'));
 
 // Define Filter Types
-type FilterType = 'all' | 'noam' | 'omer' | 'both';
+type BaseFilter = 'all' | 'noam' | 'omer' | 'both';
+type FilterType = BaseFilter | string; // string covers emoji tag filters
 
-const filters: { value: FilterType; label: string }[] = [
+const BASE_FILTERS: BaseFilter[] = ['all', 'noam', 'omer', 'both'];
+
+const filters: { value: BaseFilter; label: string }[] = [
   { value: 'all', label: 'הכל' },
   { value: 'both', label: 'ביחד' },
   { value: 'noam', label: 'נועם' },
   { value: 'omer', label: 'עומר' },
 ];
 
-const filterColors: Record<FilterType, string> = {
+const filterColors: Record<BaseFilter, string> = {
   all: 'bg-gray-900',
   both: 'bg-violet-500',
   noam: 'bg-blue-500',
@@ -98,13 +101,14 @@ export default function App() {
 
   // --- 3. Database Actions (useCallback for stable references) ---
 
-  const handleAdd = useCallback(async (newTask: { title: string; notes: string; assignee: 'noam' | 'omer' | 'both'; due_date: string | null }) => {
+  const handleAdd = useCallback(async (newTask: { title: string; notes: string; assignee: 'noam' | 'omer' | 'both'; due_date: string | null; tag: string | null }) => {
     const { error } = await supabase.from('tasks').insert([
       {
         title: newTask.title,
         notes: newTask.notes,
         assignee: newTask.assignee,
         due_date: newTask.due_date,
+        tag: newTask.tag,
         is_complete: false
       }
     ]);
@@ -172,11 +176,40 @@ export default function App() {
     }
   }, [fetchTasks]);
 
+  const handleUpdateTag = useCallback(async (id: string | number, tag: string | null) => {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, tag } : t));
+
+    const { error } = await supabase
+      .from('tasks')
+      .update({ tag })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating tag:', error);
+      fetchTasks();
+    }
+  }, [fetchTasks]);
+
+  // --- Derived tag list (dynamic, based on tasks that have a tag) ---
+  const availableTags = useMemo(() => {
+    const tags = new Set<string>();
+    tasks.forEach(t => { if (t.tag) tags.add(t.tag); });
+    return Array.from(tags);
+  }, [tasks]);
+
+  // Reset active filter if the tag it points to no longer exists
+  useEffect(() => {
+    if (!BASE_FILTERS.includes(activeFilter as BaseFilter) && !availableTags.includes(activeFilter)) {
+      setActiveFilter('all');
+    }
+  }, [availableTags, activeFilter]);
+
   // --- Sorting & Filtering (fully memoized) ---
   const filteredTasks = useMemo(() => {
     const filtered = tasks.filter((t) => {
       if (activeFilter === 'all') return true;
-      return t.assignee === activeFilter;
+      if (BASE_FILTERS.includes(activeFilter as BaseFilter)) return t.assignee === activeFilter;
+      return t.tag === activeFilter; // emoji tag filter
     });
     return filtered.sort((a, b) => {
       if (a.is_complete !== b.is_complete) return a.is_complete ? 1 : -1;
@@ -255,7 +288,7 @@ export default function App() {
               exit={{ opacity: 0, filter: 'blur(4px)' }}
               className="flex items-center justify-between py-4 mb-2"
             >
-              <div className="flex gap-1.5">
+              <div className="flex gap-1.5 flex-wrap">
                 {filters.map((f) => (
                   <button
                     key={f.value}
@@ -265,6 +298,21 @@ export default function App() {
                     {f.label}
                   </button>
                 ))}
+                <AnimatePresence>
+                  {availableTags.map((emoji) => (
+                    <motion.button
+                      key={emoji}
+                      initial={{ opacity: 0, scale: 0.7 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.7 }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 28 }}
+                      onClick={() => setActiveFilter(emoji)}
+                      className={`relative px-3 py-1.5 rounded-full text-[15px] transition-all ${activeFilter === emoji ? 'bg-gray-900 text-white' : 'text-gray-500'}`}
+                    >
+                      {emoji}
+                    </motion.button>
+                  ))}
+                </AnimatePresence>
               </div>
 
               <motion.button
@@ -301,7 +349,7 @@ export default function App() {
                     transition={{ duration: 0.25, delay: Math.min(i * 0.03, 0.3), ease: [0.25, 0.1, 0.25, 1] }}
                     className="mb-2 gpu-accelerated"
                   >
-                    <TaskCard task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} onUpdateDueDate={handleUpdateDueDate} />
+                    <TaskCard task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} onUpdateDueDate={handleUpdateDueDate} onUpdateTag={handleUpdateTag} />
                   </motion.div>
                 ))}
 
@@ -358,7 +406,7 @@ export default function App() {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.2, delay: i * 0.03 }}
                               >
-                                <TaskCard task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} onUpdateDueDate={handleUpdateDueDate} />
+                                <TaskCard task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} onUpdateDueDate={handleUpdateDueDate} onUpdateTag={handleUpdateTag} />
                               </motion.div>
                             ))}
                           </div>
@@ -409,7 +457,7 @@ export default function App() {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.2, delay: i * 0.03 }}
                               >
-                                <TaskCard task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} onUpdateDueDate={handleUpdateDueDate} />
+                                <TaskCard task={task} onToggle={handleToggle} onDelete={handleDelete} onUpdateNotes={handleUpdateNotes} onUpdateDueDate={handleUpdateDueDate} onUpdateTag={handleUpdateTag} />
                               </motion.div>
                             ))}
                           </div>
