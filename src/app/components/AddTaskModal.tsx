@@ -5,7 +5,7 @@ import { Calendar, ArrowUp } from 'lucide-react';
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (task: { title: string; notes: string; assignee: 'noam' | 'omer' | 'both'; due_date: string | null }) => void;
+  onAdd: (task: { title: string; notes: string; assignee: 'noam' | 'omer' | 'both'; due_date: string | null; tag: string | null }) => void;
   defaultAssignee: 'all' | 'noam' | 'omer' | 'both';
 }
 
@@ -14,6 +14,16 @@ const assigneeOptions: { value: 'noam' | 'omer' | 'both'; label: string; dot: st
   { value: 'both', label: 'ביחד', dot: 'bg-violet-500', ring: 'ring-violet-500/30', bg: 'bg-violet-50' },
   { value: 'omer', label: 'עומר', dot: 'bg-pink-400', ring: 'ring-pink-400/30', bg: 'bg-pink-50' },
 ];
+
+const PRESET_EMOJIS = ['🏠', '🛒', '💼', '🎯', '🔥', '⭐', '🎉', '❤️', '📚', '💡', '🏋️', '✈️'];
+
+function isValidEmoji(str: string): boolean {
+  const trimmed = str.trim();
+  if (!trimmed) return false;
+  const seg = new Intl.Segmenter();
+  const segments = Array.from(seg.segment(trimmed));
+  return segments.length === 1;
+}
 
 function formatHebrewDate(dateStr: string): string {
   if (!dateStr) return '';
@@ -38,6 +48,9 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, defaultAssignee }
   );
   const [dueDate, setDueDate] = useState('');
   const [showDate, setShowDate] = useState(false);
+  const [tag, setTag] = useState<string | null>(null);
+  const [showTagPicker, setShowTagPicker] = useState(false);
+  const [customEmojiInput, setCustomEmojiInput] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
 
@@ -48,6 +61,9 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, defaultAssignee }
       setShowNotes(false);
       setDueDate('');
       setShowDate(false);
+      setTag(null);
+      setShowTagPicker(false);
+      setCustomEmojiInput('');
       setAssignee(defaultAssignee === 'all' ? 'both' : defaultAssignee);
       setTimeout(() => inputRef.current?.focus(), 350);
     }
@@ -60,9 +76,10 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, defaultAssignee }
       notes: notes.trim(),
       assignee,
       due_date: dueDate || null,
+      tag,
     });
     onClose();
-  }, [title, notes, assignee, dueDate, onAdd, onClose]);
+  }, [title, notes, assignee, dueDate, tag, onAdd, onClose]);
 
   const handleTitleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -76,6 +93,21 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, defaultAssignee }
   const autoResize = (el: HTMLTextAreaElement) => {
     el.style.height = 'auto';
     el.style.height = el.scrollHeight + 'px';
+  };
+
+  const handleSelectTag = (emoji: string) => {
+    setTag(emoji);
+    setShowTagPicker(false);
+    setCustomEmojiInput('');
+  };
+
+  const handleCustomEmojiInput = (val: string) => {
+    setCustomEmojiInput(val);
+    if (isValidEmoji(val)) {
+      setTag(val.trim());
+      setShowTagPicker(false);
+      setCustomEmojiInput('');
+    }
   };
 
   const currentAssignee = assigneeOptions.find((a) => a.value === assignee)!;
@@ -149,7 +181,57 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, defaultAssignee }
                 )}
               </AnimatePresence>
 
-
+              {/* Tag picker panel — collapsible */}
+              <AnimatePresence>
+                {showTagPicker && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ type: 'spring', damping: 28, stiffness: 380 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-3 p-2.5 bg-gray-50/80 rounded-xl">
+                      {/* Preset emoji grid */}
+                      <div className="grid grid-cols-6 gap-1 mb-2">
+                        {PRESET_EMOJIS.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => handleSelectTag(emoji)}
+                            className={`
+                              h-9 rounded-lg text-[18px] flex items-center justify-center transition-all
+                              ${tag === emoji ? 'bg-gray-200' : 'hover:bg-gray-100/80'}
+                            `}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                      {/* Custom emoji input */}
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={customEmojiInput}
+                          onChange={(e) => handleCustomEmojiInput(e.target.value)}
+                          placeholder="אמוג׳י מותאם..."
+                          className="flex-1 text-[14px] bg-white rounded-lg px-3 h-8 border-0 outline-none text-gray-600 placeholder-gray-300"
+                          dir="rtl"
+                        />
+                        {tag && (
+                          <button
+                            type="button"
+                            onClick={() => { setTag(null); setShowTagPicker(false); }}
+                            className="h-8 px-3 rounded-lg text-[12px] text-gray-400 hover:text-gray-600 hover:bg-white transition-all"
+                          >
+                            הסר
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Toolbar row */}
               <div className="flex items-center justify-between mt-4 mb-1">
@@ -242,6 +324,32 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, defaultAssignee }
                       <line x1="17" y1="12" x2="3" y2="12" />
                       <line x1="13" y1="18" x2="3" y2="18" />
                     </svg>
+                  </motion.button>
+
+                  {/* Tag toggle */}
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setShowTagPicker(!showTagPicker)}
+                    className={`
+                      w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200
+                      ${tag
+                        ? 'text-gray-900 bg-gray-100 text-[16px]'
+                        : showTagPicker
+                          ? 'text-gray-500 bg-gray-100'
+                          : 'text-gray-300 hover:text-gray-400'
+                      }
+                    `}
+                  >
+                    {tag ? (
+                      <span className="text-[16px] leading-none">{tag}</span>
+                    ) : (
+                      /* tag icon */
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                        <line x1="7" y1="7" x2="7.01" y2="7" />
+                      </svg>
+                    )}
                   </motion.button>
                 </div>
 
